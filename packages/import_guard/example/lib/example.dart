@@ -1,3 +1,4 @@
+// NG: dart:mirrors is denied in root import_guard.yaml
 import 'dart:mirrors';
 
 void main() {

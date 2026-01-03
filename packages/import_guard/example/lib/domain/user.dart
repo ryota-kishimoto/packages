@@ -1,4 +1,6 @@
+// OK: domain can import domain
 import 'package:import_guard_example/domain/entity.dart';
+// NG: domain cannot import presenter
 import 'package:import_guard_example/presenter/widget.dart';
 
 class User extends Entity {
