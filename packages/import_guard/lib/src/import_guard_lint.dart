@@ -1,34 +1,50 @@
 import 'dart:io';
 
-import 'package:analyzer/error/listener.dart';
-import 'package:analyzer/source/source_range.dart';
+import 'package:analyzer/error/error.dart' show ErrorSeverity;
+import 'package:analyzer/error/listener.dart' show ErrorReporter;
 import 'package:custom_lint_builder/custom_lint_builder.dart';
-import 'package:analyzer/error/error.dart' hide LintCode;
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
 /// Configuration for import_guard loaded from import_guard.yaml
 class ImportGuardConfig {
   final List<String> deny;
+  final String configDir;
 
-  ImportGuardConfig({required this.deny});
+  ImportGuardConfig({required this.deny, required this.configDir});
 
-  factory ImportGuardConfig.fromYaml(YamlMap yaml) {
+  factory ImportGuardConfig.fromYaml(YamlMap yaml, String configDir) {
     final denyList = yaml['deny'] as YamlList?;
     return ImportGuardConfig(
       deny: denyList?.map((e) => e.toString()).toList() ?? [],
+      configDir: configDir,
     );
   }
 
-  static ImportGuardConfig? loadFromFile(String packagePath) {
-    final configFile = File(p.join(packagePath, 'import_guard.yaml'));
-    if (!configFile.existsSync()) return null;
+  /// Load all import_guard.yaml files from the file's directory up to package root.
+  /// Configs closer to the file take precedence.
+  static List<ImportGuardConfig> loadAllConfigs(
+    String filePath,
+    String packageRoot,
+  ) {
+    final configs = <ImportGuardConfig>[];
+    var dir = Directory(p.dirname(filePath));
 
-    final content = configFile.readAsStringSync();
-    final yaml = loadYaml(content) as YamlMap?;
-    if (yaml == null) return null;
+    while (dir.path.startsWith(packageRoot) || dir.path == packageRoot) {
+      final configFile = File(p.join(dir.path, 'import_guard.yaml'));
+      if (configFile.existsSync()) {
+        final content = configFile.readAsStringSync();
+        final yaml = loadYaml(content) as YamlMap?;
+        if (yaml != null) {
+          configs.add(ImportGuardConfig.fromYaml(yaml, dir.path));
+        }
+      }
 
-    return ImportGuardConfig.fromYaml(yaml);
+      if (dir.path == packageRoot) break;
+      dir = dir.parent;
+    }
+
+    return configs;
   }
 }
 
@@ -47,26 +63,37 @@ class ImportGuardLint extends DartLintRule {
     ErrorReporter reporter,
     CustomLintContext context,
   ) {
-    // Find package root by looking for pubspec.yaml
     final filePath = resolver.source.fullName;
-    final packagePath = _findPackageRoot(filePath);
-    if (packagePath == null) return;
+    final packageRoot = _findPackageRoot(filePath);
+    if (packageRoot == null) return;
 
-    final config = ImportGuardConfig.loadFromFile(packagePath);
-    if (config == null || config.deny.isEmpty) return;
+    final configs = ImportGuardConfig.loadAllConfigs(filePath, packageRoot);
+    if (configs.isEmpty) return;
+
+    // Get package name from pubspec.yaml
+    final packageName = _getPackageName(packageRoot);
 
     context.registry.addImportDirective((node) {
       final importUri = node.uri.stringValue;
       if (importUri == null) return;
 
-      for (final pattern in config.deny) {
-        if (_matchesPattern(importUri, pattern)) {
-          reporter.atNode(
-            node,
-            _code,
-            arguments: [importUri],
-          );
-          break;
+      for (final config in configs) {
+        for (final pattern in config.deny) {
+          if (_matchesPattern(
+            importUri: importUri,
+            pattern: pattern,
+            configDir: config.configDir,
+            filePath: filePath,
+            packageRoot: packageRoot,
+            packageName: packageName,
+          )) {
+            reporter.atNode(
+              node,
+              _code,
+              arguments: [importUri],
+            );
+            return; // Only report once per import
+          }
         }
       }
     });
@@ -83,7 +110,101 @@ class ImportGuardLint extends DartLintRule {
     return null;
   }
 
-  bool _matchesPattern(String importUri, String pattern) {
+  String? _getPackageName(String packageRoot) {
+    final pubspecFile = File(p.join(packageRoot, 'pubspec.yaml'));
+    if (!pubspecFile.existsSync()) return null;
+
+    final content = pubspecFile.readAsStringSync();
+    final yaml = loadYaml(content) as YamlMap?;
+    return yaml?['name'] as String?;
+  }
+
+  bool _matchesPattern({
+    required String importUri,
+    required String pattern,
+    required String configDir,
+    required String filePath,
+    required String packageRoot,
+    required String? packageName,
+  }) {
+    // Handle relative patterns (starting with ./ or ../)
+    if (pattern.startsWith('./') || pattern.startsWith('../')) {
+      return _matchesRelativePattern(
+        importUri: importUri,
+        pattern: pattern,
+        configDir: configDir,
+        filePath: filePath,
+        packageRoot: packageRoot,
+        packageName: packageName,
+      );
+    }
+
+    // Handle absolute patterns (package:foo, dart:foo)
+    return _matchesAbsolutePattern(importUri, pattern);
+  }
+
+  bool _matchesRelativePattern({
+    required String importUri,
+    required String pattern,
+    required String configDir,
+    required String filePath,
+    required String packageRoot,
+    required String? packageName,
+  }) {
+    // Resolve the pattern to an absolute path from configDir
+    final resolvedPatternPath = p.normalize(p.join(configDir, pattern));
+
+    // Handle relative imports (import '../foo.dart')
+    if (importUri.startsWith('.')) {
+      final fileDir = p.dirname(filePath);
+      final resolvedImportPath = p.normalize(p.join(fileDir, importUri));
+      return _pathMatchesPattern(resolvedImportPath, resolvedPatternPath);
+    }
+
+    // Handle package imports (import 'package:myapp/foo.dart')
+    if (packageName != null && importUri.startsWith('package:$packageName/')) {
+      // Convert package import to file path
+      final importPath = importUri.substring('package:$packageName/'.length);
+      final absoluteImportPath = p.join(packageRoot, 'lib', importPath);
+      return _pathMatchesPattern(absoluteImportPath, resolvedPatternPath);
+    }
+
+    return false;
+  }
+
+  bool _pathMatchesPattern(String path, String pattern) {
+    // Remove glob suffix for matching
+    String patternBase = pattern;
+    bool matchChildren = false;
+    bool matchAll = false;
+
+    if (pattern.endsWith('/**')) {
+      patternBase = pattern.substring(0, pattern.length - 3);
+      matchAll = true;
+    } else if (pattern.endsWith('/*')) {
+      patternBase = pattern.substring(0, pattern.length - 2);
+      matchChildren = true;
+    }
+
+    patternBase = p.normalize(patternBase);
+
+    if (matchAll) {
+      // Match anything under this path
+      return path.startsWith(patternBase);
+    }
+
+    if (matchChildren) {
+      // Match only direct children
+      if (!path.startsWith('$patternBase${p.separator}')) return false;
+      final remainder = path.substring(patternBase.length + 1);
+      return !remainder.contains(p.separator);
+    }
+
+    // Exact match or file within directory
+    return path == patternBase || path.startsWith('$patternBase${p.separator}');
+  }
+
+  bool _matchesAbsolutePattern(String importUri, String pattern) {
     // Handle glob-like patterns
     // package:foo/** -> matches package:foo/anything
     // package:foo/* -> matches package:foo/single_segment
