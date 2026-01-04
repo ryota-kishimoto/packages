@@ -7,9 +7,8 @@ A custom_lint package to guard imports between packages and folders.
 ## Features
 
 - Define import restrictions per folder using `import_guard.yaml`
-- Support glob patterns: `package:foo`, `package:foo/*`, `package:foo/**`
-- Support relative path patterns: `../presenter/**`, `./internal/*`
-- Works with both relative imports and package imports
+- Glob patterns: `package:my_app/data/**`, `package:flutter/**`
+- Works with package imports and relative imports
 
 ## Installation
 
@@ -52,39 +51,42 @@ Create `import_guard.yaml` in any directory to define restrictions for files in 
 
 ### Example: Clean Architecture
 
+For a Flutter app named `my_app`:
+
 ```
-lib/
-├── domain/
-│   ├── import_guard.yaml    # Restrict imports from presenter/infrastructure
-│   └── user.dart
-├── presenter/
-│   └── user_widget.dart
-└── infrastructure/
-    └── user_repository.dart
+my_app/
+├── pubspec.yaml          # name: my_app
+└── lib/
+    ├── domain/
+    │   ├── import_guard.yaml
+    │   └── user.dart
+    ├── presentation/
+    │   └── user_page.dart
+    └── data/
+        └── user_repository.dart
 ```
 
 ```yaml
 # lib/domain/import_guard.yaml
 deny:
-  - ../presenter/**
-  - ../infrastructure/**
+  - package:my_app/presentation/**
+  - package:my_app/data/**
 ```
 
-This prevents domain layer from importing presenter or infrastructure layers.
+This prevents domain layer from importing presentation or data layers.
 
 ### Pattern Types
 
 | Pattern | Matches |
 |---------|---------|
-| `package:foo` | `package:foo`, `package:foo/bar` |
-| `package:foo/*` | `package:foo/bar` (direct children only) |
-| `package:foo/**` | `package:foo/bar/baz` (all descendants) |
-| `../presenter/**` | All files under sibling `presenter/` directory |
+| `package:my_app/data/**` | All files under `lib/data/` |
+| `package:my_app/data/*` | Direct children of `lib/data/` only |
+| `package:flutter/**` | All flutter imports |
 | `dart:mirrors` | Specific dart library |
 
-### Recommended: Use package imports only
+### Recommended: Use package imports
 
-To avoid managing both relative and package import patterns, we recommend enabling `always_use_package_imports` lint rule:
+To simplify configuration, enable `always_use_package_imports`:
 
 ```yaml
 # analysis_options.yaml
@@ -93,7 +95,7 @@ linter:
     - always_use_package_imports
 ```
 
-This ensures all imports use the `package:` format, simplifying your `import_guard.yaml` configuration.
+Then you only need to write package patterns (no relative path patterns needed).
 
 ## Running
 

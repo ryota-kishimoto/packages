@@ -5,9 +5,8 @@
 ## 特徴
 
 - `import_guard.yaml`でフォルダごとにimport制限を定義
-- globパターン対応: `package:foo`, `package:foo/*`, `package:foo/**`
-- 相対パスパターン対応: `../presenter/**`, `./internal/*`
-- 相対importとpackage import両方に対応
+- globパターン: `package:my_app/data/**`, `package:flutter/**`
+- package importと相対import両方に対応
 
 ## インストール
 
@@ -50,39 +49,42 @@ custom_lint:
 
 ### 例: クリーンアーキテクチャ
 
+`my_app`というFlutterアプリの場合:
+
 ```
-lib/
-├── domain/
-│   ├── import_guard.yaml    # presenter/infrastructureからのimportを禁止
-│   └── user.dart
-├── presenter/
-│   └── user_widget.dart
-└── infrastructure/
-    └── user_repository.dart
+my_app/
+├── pubspec.yaml          # name: my_app
+└── lib/
+    ├── domain/
+    │   ├── import_guard.yaml
+    │   └── user.dart
+    ├── presentation/
+    │   └── user_page.dart
+    └── data/
+        └── user_repository.dart
 ```
 
 ```yaml
 # lib/domain/import_guard.yaml
 deny:
-  - ../presenter/**
-  - ../infrastructure/**
+  - package:my_app/presentation/**
+  - package:my_app/data/**
 ```
 
-これでdomainレイヤーがpresenterやinfrastructureレイヤーをimportすることを防げる。
+これでdomainレイヤーがpresentationやdataレイヤーをimportすることを防げる。
 
 ### パターンの種類
 
 | パターン | マッチ対象 |
 |---------|-----------|
-| `package:foo` | `package:foo`, `package:foo/bar` |
-| `package:foo/*` | `package:foo/bar` (直下のみ) |
-| `package:foo/**` | `package:foo/bar/baz` (配下全て) |
-| `../presenter/**` | 兄弟ディレクトリ`presenter/`配下の全ファイル |
+| `package:my_app/data/**` | `lib/data/`配下の全ファイル |
+| `package:my_app/data/*` | `lib/data/`直下のみ |
+| `package:flutter/**` | 全てのflutter import |
 | `dart:mirrors` | 特定のdartライブラリ |
 
-### 推奨: package importのみを使用
+### 推奨: package importを使用
 
-相対importとpackage importの両方を管理する手間を省くため、`always_use_package_imports`ルールの有効化を推奨:
+設定をシンプルにするため、`always_use_package_imports`の有効化を推奨:
 
 ```yaml
 # analysis_options.yaml
@@ -91,7 +93,7 @@ linter:
     - always_use_package_imports
 ```
 
-これで全てのimportが`package:`形式になり、`import_guard.yaml`の設定がシンプルになる。
+これでpackageパターンのみで設定可能（相対パスパターン不要）。
 
 ## 実行
 
