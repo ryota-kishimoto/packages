@@ -28,6 +28,17 @@ plugins:
   import_guard: ^1.0.0
 ```
 
+### Configure Severity (Optional)
+
+By default, violations are reported as warnings. You can change the severity to `error`, `info`, or `ignore`:
+
+```yaml
+# analysis_options.yaml
+analyzer:
+  errors:
+    import_guard: error  # warning (default), error, info, or ignore
+```
+
 ## Usage
 
 Create `import_guard.yaml` in any directory to define restrictions for files in that directory.

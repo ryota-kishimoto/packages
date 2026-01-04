@@ -26,6 +26,17 @@ plugins:
   import_guard: ^1.0.0
 ```
 
+### 重大度の設定（オプション）
+
+デフォルトでは違反はwarningとして報告されます。`error`、`info`、`ignore`に変更可能:
+
+```yaml
+# analysis_options.yaml
+analyzer:
+  errors:
+    import_guard: error  # warning（デフォルト）, error, info, ignore
+```
+
 ## 使い方
 
 任意のディレクトリに`import_guard.yaml`を作成し、そのディレクトリ内のファイルに対するimport制限を定義。
