@@ -1,0 +1,3 @@
+deny:
+  - package:import_guard_example/presenter/**
+  - package:import_guard_example/infrastructure/**

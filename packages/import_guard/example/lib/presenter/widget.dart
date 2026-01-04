@@ -1,0 +1,3 @@
+class UserWidget {
+  void render() {}
+}
