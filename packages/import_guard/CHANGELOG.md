@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.3
+
+- Fix: monorepo performance improvement (share config cache across packages)
+
 ## 0.0.1
 
 - Initial release
