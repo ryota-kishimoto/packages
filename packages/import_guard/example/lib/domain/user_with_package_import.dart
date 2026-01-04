@@ -1,6 +1,7 @@
 // OK: domain can import domain
 import 'package:import_guard_example/domain/entity.dart';
 // NG: domain cannot import infrastructure
+// expect_lint: import_guard
 import 'package:import_guard_example/infrastructure/user_repository.dart';
 
 class UserWithInfraImport extends Entity {
