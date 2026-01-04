@@ -182,23 +182,24 @@ class ConfigCache {
 }
 
 class ImportGuardLint extends DartLintRule {
-  ImportGuardLint({ErrorSeverity severity = ErrorSeverity.ERROR})
-      : _code = LintCode(
-          name: 'import_guard',
-          problemMessage: 'This import is not allowed: {0}',
-          errorSeverity: severity,
-        ),
-        super(
-          code: LintCode(
-            name: 'import_guard',
-            problemMessage: 'This import is not allowed: {0}',
-            errorSeverity: severity,
-          ),
-        );
+  factory ImportGuardLint({ErrorSeverity severity = ErrorSeverity.ERROR}) {
+    final code = LintCode(
+      name: 'import_guard',
+      problemMessage: 'This import is not allowed: {0}',
+      errorSeverity: severity,
+    );
+    return ImportGuardLint._(code);
+  }
+
+  ImportGuardLint._(LintCode code)
+      : _code = code,
+        super(code: code);
 
   final LintCode _code;
-
   final _configCache = ConfigCache();
+
+  /// Cache for package root lookups to avoid repeated filesystem traversal.
+  static final _packageRootCache = <String, String?>{};
 
   @override
   void run(
@@ -258,13 +259,24 @@ class ImportGuardLint extends DartLintRule {
   }
 
   String? _findPackageRoot(String filePath) {
-    var dir = Directory(p.dirname(filePath));
+    final fileDir = p.dirname(filePath);
+
+    // Check cache first
+    if (_packageRootCache.containsKey(fileDir)) {
+      return _packageRootCache[fileDir];
+    }
+
+    // Walk up to find pubspec.yaml
+    var dir = Directory(fileDir);
     while (dir.path != dir.parent.path) {
       if (File(p.join(dir.path, 'pubspec.yaml')).existsSync()) {
+        _packageRootCache[fileDir] = dir.path;
         return dir.path;
       }
       dir = dir.parent;
     }
+
+    _packageRootCache[fileDir] = null;
     return null;
   }
 }
