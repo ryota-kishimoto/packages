@@ -32,6 +32,20 @@ analyzer:
     - custom_lint
 ```
 
+### Configure Severity (Optional)
+
+By default, violations are reported as errors. You can change the severity to `warning` or `info`:
+
+```yaml
+# analysis_options.yaml
+custom_lint:
+  rules:
+    - import_guard:
+      severity: warning  # error (default), warning, or info
+```
+
+Note: `severity` must be at the same indentation level as `import_guard:`, not nested under it.
+
 ## Usage
 
 Create `import_guard.yaml` in any directory to define restrictions for files in that directory.

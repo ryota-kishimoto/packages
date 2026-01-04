@@ -126,13 +126,21 @@ class ConfigCache {
 }
 
 class ImportGuardLint extends DartLintRule {
-  ImportGuardLint() : super(code: _code);
+  ImportGuardLint({ErrorSeverity severity = ErrorSeverity.ERROR})
+      : _code = LintCode(
+          name: 'import_guard',
+          problemMessage: 'This import is not allowed: {0}',
+          errorSeverity: severity,
+        ),
+        super(
+          code: LintCode(
+            name: 'import_guard',
+            problemMessage: 'This import is not allowed: {0}',
+            errorSeverity: severity,
+          ),
+        );
 
-  static const _code = LintCode(
-    name: 'import_guard',
-    problemMessage: 'This import is not allowed: {0}',
-    errorSeverity: ErrorSeverity.ERROR,
-  );
+  final LintCode _code;
 
   final _configCache = ConfigCache();
 

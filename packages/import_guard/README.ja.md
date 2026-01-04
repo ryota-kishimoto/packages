@@ -30,6 +30,20 @@ analyzer:
     - custom_lint
 ```
 
+### 重大度の設定（オプション）
+
+デフォルトでは違反はエラーとして報告されます。`warning`や`info`に変更可能:
+
+```yaml
+# analysis_options.yaml
+custom_lint:
+  rules:
+    - import_guard:
+      severity: warning  # error（デフォルト）, warning, info
+```
+
+注意: `severity`は`import_guard:`と同じインデントレベルに配置する必要があります（ネストしない）。
+
 ## 使い方
 
 任意のディレクトリに`import_guard.yaml`を作成し、そのディレクトリ内のファイルに対するimport制限を定義。
