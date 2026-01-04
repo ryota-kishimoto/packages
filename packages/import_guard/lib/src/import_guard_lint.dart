@@ -9,19 +9,53 @@ import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
 import 'pattern_matcher.dart';
+import 'pattern_trie.dart';
 
 /// Configuration for import_guard loaded from import_guard.yaml
 class ImportGuardConfig {
   final List<String> deny;
   final String configDir;
 
-  ImportGuardConfig({required this.deny, required this.configDir});
+  /// Pre-built Trie for absolute patterns (package:, dart:)
+  final PatternTrie absolutePatternTrie;
+
+  /// Relative patterns that need context-aware matching
+  final List<String> relativePatterns;
+
+  ImportGuardConfig._({
+    required this.deny,
+    required this.configDir,
+    required this.absolutePatternTrie,
+    required this.relativePatterns,
+  });
 
   factory ImportGuardConfig.fromYaml(YamlMap yaml, String configDir) {
     final denyList = yaml['deny'] as YamlList?;
-    return ImportGuardConfig(
-      deny: denyList?.map((e) => e.toString()).toList() ?? [],
+    final patterns = denyList?.map((e) => e.toString()).toList() ?? [];
+
+    // Separate absolute and relative patterns
+    final absolutePatterns = <String>[];
+    final relativePatterns = <String>[];
+
+    for (final pattern in patterns) {
+      if (pattern.startsWith('./') || pattern.startsWith('../')) {
+        relativePatterns.add(pattern);
+      } else {
+        absolutePatterns.add(pattern);
+      }
+    }
+
+    // Build Trie from absolute patterns
+    final trie = PatternTrie();
+    for (final pattern in absolutePatterns) {
+      trie.insert(pattern);
+    }
+
+    return ImportGuardConfig._(
+      deny: patterns,
       configDir: configDir,
+      absolutePatternTrie: trie,
+      relativePatterns: relativePatterns,
     );
   }
 }
@@ -166,24 +200,37 @@ class ImportGuardLint extends DartLintRule {
       if (importUri == null) return;
 
       for (final config in configs) {
-        final matcher = PatternMatcher(
-          configDir: config.configDir,
-          packageRoot: packageRoot,
-          packageName: packageName,
-        );
+        // Fast path: check absolute patterns using Trie O(path_length)
+        if (config.absolutePatternTrie.matches(importUri)) {
+          reporter.atNode(
+            node,
+            _code,
+            arguments: [importUri],
+          );
+          return;
+        }
 
-        for (final pattern in config.deny) {
-          if (matcher.matches(
-            importUri: importUri,
-            pattern: pattern,
-            filePath: filePath,
-          )) {
-            reporter.atNode(
-              node,
-              _code,
-              arguments: [importUri],
-            );
-            return;
+        // Slow path: check relative patterns O(patterns)
+        if (config.relativePatterns.isNotEmpty) {
+          final matcher = PatternMatcher(
+            configDir: config.configDir,
+            packageRoot: packageRoot,
+            packageName: packageName,
+          );
+
+          for (final pattern in config.relativePatterns) {
+            if (matcher.matches(
+              importUri: importUri,
+              pattern: pattern,
+              filePath: filePath,
+            )) {
+              reporter.atNode(
+                node,
+                _code,
+                arguments: [importUri],
+              );
+              return;
+            }
           }
         }
       }
