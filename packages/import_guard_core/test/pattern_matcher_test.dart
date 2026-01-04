@@ -1,4 +1,4 @@
-import 'package:import_guard/src/pattern_matcher.dart';
+import 'package:import_guard_core/import_guard_core.dart';
 import 'package:test/test.dart';
 
 void main() {

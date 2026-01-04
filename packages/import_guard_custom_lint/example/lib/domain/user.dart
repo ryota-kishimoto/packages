@@ -1,9 +1,8 @@
 // OK: domain layer can import within domain
-import 'package:import_guard_example/domain/entity.dart';
+import 'package:import_guard_custom_lint_example/domain/entity.dart';
 
-// NG: domain layer cannot import presenter layer
-// This import triggers import_guard warning
-import 'package:import_guard_example/presenter/widget.dart';
+// NG: domain layer cannot import presenter layer (triggers warning)
+import 'package:import_guard_custom_lint_example/presenter/widget.dart';
 
 class User extends Entity {
   final String name;

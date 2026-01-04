@@ -1,0 +1,19 @@
+name: import_guard_core
+description: Core logic for import_guard - pattern matching and configuration parsing.
+version: 0.0.1
+repository: https://github.com/ryota-kishimoto/packages/tree/main/packages/import_guard_core
+issue_tracker: https://github.com/ryota-kishimoto/packages/issues
+topics:
+  - lints
+  - clean-architecture
+  - static-analysis
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  yaml: ^3.1.0
+  path: ^1.9.0
+
+dev_dependencies:
+  test: ^1.25.0

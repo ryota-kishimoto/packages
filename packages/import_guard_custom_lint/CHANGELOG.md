@@ -3,8 +3,7 @@
 ## 0.0.1
 
 - Initial release
-- Native analyzer plugin using analysis_server_plugin (Dart 3.10+)
-- Full IDE integration with `dart analyze` and `flutter analyze`
+- custom_lint based implementation for Dart 3.6+
 - Support for glob patterns (`*`, `**`)
 - Hierarchical config inheritance from repo root
 - Trie-based O(path_length) pattern matching

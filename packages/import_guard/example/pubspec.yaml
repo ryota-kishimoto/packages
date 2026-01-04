@@ -3,13 +3,8 @@ description: Example package to test import_guard
 publish_to: none
 
 environment:
-  sdk: ^3.6.0
-
-dependencies:
-  # Fake packages for testing
-  # In real usage, these would be actual packages
+  sdk: ^3.10.0
 
 dev_dependencies:
   import_guard:
     path: ..
-  custom_lint: ^0.8.0

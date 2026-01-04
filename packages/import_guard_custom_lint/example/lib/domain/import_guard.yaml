@@ -1,0 +1,2 @@
+deny:
+  - package:import_guard_custom_lint_example/presenter/**

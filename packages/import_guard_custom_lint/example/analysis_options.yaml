@@ -1,5 +1,6 @@
-plugins:
-  import_guard: ^0.0.1
+analyzer:
+  plugins:
+    - custom_lint
 
 linter:
   rules:

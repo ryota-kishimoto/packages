@@ -1,6 +1,6 @@
 name: import_guard
-description: A custom_lint package to guard imports between folders. Enforce clean architecture layer dependencies with configurable deny rules.
-version: 0.1.0
+description: An analyzer plugin to guard imports between folders. Enforce clean architecture layer dependencies with configurable deny rules.
+version: 0.0.1
 repository: https://github.com/ryota-kishimoto/packages/tree/main/packages/import_guard
 issue_tracker: https://github.com/ryota-kishimoto/packages/issues
 topics:
@@ -10,14 +10,9 @@ topics:
   - static-analysis
 
 environment:
-  sdk: ^3.6.0
+  sdk: ^3.10.0
 
 dependencies:
+  analysis_server_plugin: ^0.3.0
   analyzer: ^8.0.0
-  analyzer_plugin: ^0.13.0
-  custom_lint_builder: ^0.8.0
-  yaml: ^3.1.0
-  path: ^1.9.0
-
-dev_dependencies:
-  test: ^1.25.0
+  import_guard_core: ^0.0.1

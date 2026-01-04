@@ -1,0 +1,11 @@
+name: import_guard_custom_lint_example
+description: Example package to test import_guard_custom_lint
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+dev_dependencies:
+  import_guard_custom_lint:
+    path: ..
+  custom_lint: ^0.8.0

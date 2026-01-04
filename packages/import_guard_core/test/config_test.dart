@@ -1,4 +1,4 @@
-import 'package:import_guard/src/import_guard_lint.dart';
+import 'package:import_guard_core/import_guard_core.dart';
 import 'package:test/test.dart';
 import 'package:yaml/yaml.dart';
 

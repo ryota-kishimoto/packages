@@ -1,14 +1,8 @@
-// ignore_for_file: deprecated_member_use
-// TODO: Migrate to DiagnosticSeverity/DiagnosticReporter when custom_lint_builder supports it
 import 'dart:io';
 
-import 'package:analyzer/error/error.dart' show ErrorSeverity;
-import 'package:analyzer/error/listener.dart' show ErrorReporter;
-import 'package:custom_lint_builder/custom_lint_builder.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
-import 'pattern_matcher.dart';
 import 'pattern_trie.dart';
 
 /// Configuration for import_guard loaded from import_guard.yaml
@@ -104,6 +98,19 @@ class ConfigCache {
     return _packageNames[packageRoot];
   }
 
+  /// Find package root by looking for pubspec.yaml.
+  /// Returns null if not found.
+  String? findPackageRoot(String filePath) {
+    var dir = Directory(p.dirname(filePath));
+    while (dir.path != dir.parent.path) {
+      if (File(p.join(dir.path, 'pubspec.yaml')).existsSync()) {
+        return dir.path;
+      }
+      dir = dir.parent;
+    }
+    return null;
+  }
+
   /// Load all import_guard.yaml files (once per package root).
   void _ensureLoaded(String packageRoot) {
     if (_cache.containsKey(packageRoot)) return;
@@ -178,105 +185,5 @@ class ConfigCache {
     } catch (_) {
       return null;
     }
-  }
-}
-
-class ImportGuardLint extends DartLintRule {
-  factory ImportGuardLint({ErrorSeverity severity = ErrorSeverity.ERROR}) {
-    final code = LintCode(
-      name: 'import_guard',
-      problemMessage: 'This import is not allowed: {0}',
-      errorSeverity: severity,
-    );
-    return ImportGuardLint._(code);
-  }
-
-  ImportGuardLint._(LintCode code)
-      : _code = code,
-        super(code: code);
-
-  final LintCode _code;
-  final _configCache = ConfigCache();
-
-  /// Cache for package root lookups to avoid repeated filesystem traversal.
-  static final _packageRootCache = <String, String?>{};
-
-  @override
-  void run(
-    CustomLintResolver resolver,
-    ErrorReporter reporter,
-    CustomLintContext context,
-  ) {
-    final filePath = resolver.source.fullName;
-    final packageRoot = _findPackageRoot(filePath);
-    if (packageRoot == null) return;
-
-    final configs = _configCache.getConfigsForFile(filePath, packageRoot);
-    if (configs.isEmpty) return;
-
-    final packageName = _configCache.getPackageName(packageRoot);
-
-    context.registry.addImportDirective((node) {
-      final importUri = node.uri.stringValue;
-      if (importUri == null) return;
-
-      for (final config in configs) {
-        // Fast path: check absolute patterns using Trie O(path_length)
-        if (config.absolutePatternTrie.matches(importUri)) {
-          reporter.atNode(
-            node,
-            _code,
-            arguments: [importUri],
-          );
-          return;
-        }
-
-        // Slow path: check relative patterns O(patterns)
-        if (config.relativePatterns.isNotEmpty) {
-          final matcher = PatternMatcher(
-            configDir: config.configDir,
-            packageRoot: packageRoot,
-            packageName: packageName,
-          );
-
-          for (final pattern in config.relativePatterns) {
-            if (matcher.matches(
-              importUri: importUri,
-              pattern: pattern,
-              filePath: filePath,
-            )) {
-              reporter.atNode(
-                node,
-                _code,
-                arguments: [importUri],
-              );
-              return;
-            }
-          }
-        }
-      }
-    });
-  }
-
-  String? _findPackageRoot(String filePath) {
-    final fileDir = p.dirname(filePath);
-
-    // Check cache first
-    if (_packageRootCache.containsKey(fileDir)) {
-      return _packageRootCache[fileDir];
-    }
-
-    // Walk up to find pubspec.yaml
-    var dir = Directory(fileDir);
-    while (dir.path != dir.parent.path) {
-      if (File(p.join(dir.path, 'pubspec.yaml')).existsSync()) {
-        _packageRootCache[fileDir] = dir.path;
-        return dir.path;
-      }
-      dir = dir.parent;
-    }
-
-    _packageRootCache[fileDir] = null;
-    return null;
   }
 }

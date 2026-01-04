@@ -1,8 +1,8 @@
-# import_guard
+# import_guard_custom_lint
 
-パッケージやフォルダ間のimportを制限するanalyzer plugin。
+パッケージやフォルダ間のimportを制限するcustom_lintパッケージ。
 
-> **Dart 3.10以上が必要**。古いDartバージョンでは[import_guard_custom_lint](https://pub.dev/packages/import_guard_custom_lint)を使用してください。
+> **Note**: Dart 3.10以上の場合は、ネイティブanalyzer plugin APIを使用する[import_guard](https://pub.dev/packages/import_guard)の利用を検討してください。IDEとの統合がより良好です。
 
 ## 特徴
 
@@ -10,20 +10,21 @@
 - globパターン: `package:my_app/data/**`, `package:flutter/**`
 - package importと相対import両方に対応
 - リポジトリルートからの階層的な設定継承
-- `dart analyze` / `flutter analyze`でのネイティブIDE統合
 
 ## インストール
 
 ```yaml
 dev_dependencies:
-  import_guard: ^0.0.1
+  import_guard_custom_lint: ^0.0.1
+  custom_lint: ^0.8.0
 ```
 
 `analysis_options.yaml`で有効化:
 
 ```yaml
-plugins:
-  import_guard: ^0.0.1
+analyzer:
+  plugins:
+    - custom_lint
 ```
 
 ## 使い方
@@ -82,14 +83,12 @@ linter:
 ## 実行
 
 ```bash
-dart analyze
-# または
-flutter analyze
+dart run custom_lint
 ```
 
 ## 関連パッケージ
 
-- [import_guard_custom_lint](https://pub.dev/packages/import_guard_custom_lint) - custom_lint実装 (Dart 3.6+)
+- [import_guard](https://pub.dev/packages/import_guard) - ネイティブanalyzer plugin (Dart 3.10+)
 - [import_guard_core](https://pub.dev/packages/import_guard_core) - コアロジック
 
 ## ライセンス
