@@ -100,9 +100,10 @@ packages:
   import_guard_core:
     dependency: "direct main"
     description:
-      path: "../import_guard_core"
-      relative: true
-    source: path
+      name: import_guard_core
+      sha256: "4f52ca21936c6a3ce4dbb5379ba648733b37e4d20cf763148776aaf83d37765a"
+      url: "https://pub.dev"
+    source: hosted
     version: "0.0.1"
   meta:
     dependency: transitive

@@ -1,6 +1,0 @@
-# melos_managed_dependency_overrides: import_guard,import_guard_core
-dependency_overrides:
-  import_guard:
-    path: ..
-  import_guard_core:
-    path: ../../import_guard_core

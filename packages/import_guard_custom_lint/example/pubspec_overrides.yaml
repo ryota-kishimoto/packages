@@ -1,5 +1,0 @@
-dependency_overrides:
-  import_guard_custom_lint:
-    path: ..
-  import_guard_core:
-    path: ../../import_guard_core

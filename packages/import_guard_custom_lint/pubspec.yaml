@@ -1,8 +1,8 @@
 name: import_guard_custom_lint
 description: A custom_lint package to guard imports between folders. Enforce clean architecture layer dependencies with configurable deny rules.
 version: 0.0.1
-repository: https://github.com/ryota-kishimoto/packages/tree/main/packages/import_guard_custom_lint
-issue_tracker: https://github.com/ryota-kishimoto/packages/issues
+repository: https://github.com/ryota-kishimoto/import_guard/tree/main/packages/import_guard_custom_lint
+issue_tracker: https://github.com/ryota-kishimoto/import_guard/issues
 topics:
   - lints
   - lint
