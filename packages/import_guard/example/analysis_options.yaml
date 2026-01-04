@@ -1,6 +1,5 @@
 plugins:
-  import_guard:
-    path: ..
+  import_guard: ^0.0.1
 
 linter:
   rules:
