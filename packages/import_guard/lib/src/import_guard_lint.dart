@@ -39,21 +39,25 @@ class ConfigCache {
   /// Map: packageRoot -> packageName
   final _packageNames = <String, String?>{};
 
+  /// Map: packageRoot -> repoRoot
+  final _repoRoots = <String, String>{};
+
   /// Get all applicable configs for a file path.
-  /// Returns configs from file's directory up to package root.
+  /// Returns configs from file's directory up to repo root.
   List<ImportGuardConfig> getConfigsForFile(String filePath, String packageRoot) {
     _ensureLoaded(packageRoot);
 
     final configs = <ImportGuardConfig>[];
     final allConfigs = _cache[packageRoot] ?? {};
+    final repoRoot = _repoRoots[packageRoot] ?? packageRoot;
 
     var dir = p.dirname(filePath);
-    while (dir.startsWith(packageRoot) || dir == packageRoot) {
+    while (true) {
       final config = allConfigs[dir];
       if (config != null) {
         configs.add(config);
       }
-      if (dir == packageRoot) break;
+      if (dir == repoRoot || dir == p.dirname(dir)) break;
       dir = p.dirname(dir);
     }
 
@@ -66,16 +70,32 @@ class ConfigCache {
     return _packageNames[packageRoot];
   }
 
-  /// Load all import_guard.yaml files in the package root (once).
+  /// Load all import_guard.yaml files (once per package root).
   void _ensureLoaded(String packageRoot) {
     if (_cache.containsKey(packageRoot)) return;
 
-    final configs = <String, ImportGuardConfig>{};
-    _scanDirectory(Directory(packageRoot), configs);
-    _cache[packageRoot] = configs;
+    final repoRoot = _findRepoRoot(packageRoot);
+    _repoRoots[packageRoot] = repoRoot;
 
-    // Cache package name
+    final configs = <String, ImportGuardConfig>{};
+
+    // Scan from repo root (includes package root and ancestors)
+    _scanDirectory(Directory(repoRoot), configs);
+
+    _cache[packageRoot] = configs;
     _packageNames[packageRoot] = _loadPackageName(packageRoot);
+  }
+
+  /// Find repo root by looking for .git directory.
+  String _findRepoRoot(String packageRoot) {
+    var dir = Directory(packageRoot);
+    while (dir.path != dir.parent.path) {
+      if (Directory(p.join(dir.path, '.git')).existsSync()) {
+        return dir.path;
+      }
+      dir = dir.parent;
+    }
+    return packageRoot; // Fallback to package root if no .git found
   }
 
   /// Recursively scan directory for import_guard.yaml files.
