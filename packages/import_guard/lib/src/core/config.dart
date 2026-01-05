@@ -13,6 +13,9 @@ class ImportGuardConfig {
   /// Path to the import_guard.yaml file that defined this config.
   final String configFilePath;
 
+  /// Whether to inherit parent directory configs. Defaults to true.
+  final bool inherit;
+
   /// Pre-built Trie for absolute patterns (package:, dart:)
   final PatternTrie absolutePatternTrie;
 
@@ -23,6 +26,7 @@ class ImportGuardConfig {
     required this.deny,
     required this.configDir,
     required this.configFilePath,
+    required this.inherit,
     required this.absolutePatternTrie,
     required this.relativePatterns,
   });
@@ -34,6 +38,7 @@ class ImportGuardConfig {
   ) {
     final denyList = yaml['deny'] as YamlList?;
     final patterns = denyList?.map((e) => e.toString()).toList() ?? [];
+    final inherit = yaml['inherit'] as bool? ?? true;
 
     // Separate absolute and relative patterns
     final absolutePatterns = <String>[];
@@ -57,6 +62,7 @@ class ImportGuardConfig {
       deny: patterns,
       configDir: configDir,
       configFilePath: configFilePath,
+      inherit: inherit,
       absolutePatternTrie: trie,
       relativePatterns: relativePatterns,
     );
@@ -82,6 +88,7 @@ class ConfigCache {
 
   /// Get all applicable configs for a file path.
   /// Returns configs from file's directory up to repo root.
+  /// Stops traversing if a config has `inherit: false`.
   List<ImportGuardConfig> getConfigsForFile(String filePath, String packageRoot) {
     final repoRoot = _getRepoRoot(packageRoot);
     _ensureRepoLoaded(repoRoot);
@@ -94,6 +101,8 @@ class ConfigCache {
       final config = allConfigs[dir];
       if (config != null) {
         configs.add(config);
+        // Stop inheriting if this config has inherit: false
+        if (!config.inherit) break;
       }
       if (dir == repoRoot || dir == p.dirname(dir)) break;
       dir = p.dirname(dir);

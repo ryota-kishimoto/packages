@@ -89,5 +89,52 @@ deny:
 
       expect(config.configFilePath, '/project/lib/domain/import_guard.yaml');
     });
+
+    test('inherit defaults to true', () {
+      final yaml = loadYaml('''
+deny:
+  - dart:mirrors
+''') as YamlMap;
+
+      final config = ImportGuardConfig.fromYaml(
+        yaml,
+        '/app/lib/domain',
+        '/app/lib/domain/import_guard.yaml',
+      );
+
+      expect(config.inherit, isTrue);
+    });
+
+    test('parses inherit: false', () {
+      final yaml = loadYaml('''
+inherit: false
+deny:
+  - dart:mirrors
+''') as YamlMap;
+
+      final config = ImportGuardConfig.fromYaml(
+        yaml,
+        '/app/lib/legacy',
+        '/app/lib/legacy/import_guard.yaml',
+      );
+
+      expect(config.inherit, isFalse);
+    });
+
+    test('parses inherit: true explicitly', () {
+      final yaml = loadYaml('''
+inherit: true
+deny:
+  - dart:mirrors
+''') as YamlMap;
+
+      final config = ImportGuardConfig.fromYaml(
+        yaml,
+        '/app/lib/domain',
+        '/app/lib/domain/import_guard.yaml',
+      );
+
+      expect(config.inherit, isTrue);
+    });
   });
 }
