@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.4
+
+- Fix: correct SDK constraint to >=3.7.0 (was incorrectly set to ^3.6.0)
+
 ## 0.0.3
 
 - Fix: share config cache across packages in monorepo (performance improvement)
