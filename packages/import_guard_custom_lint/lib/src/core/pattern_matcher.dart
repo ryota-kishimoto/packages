@@ -6,11 +6,19 @@ class PatternMatcher {
   final String packageRoot;
   final String? packageName;
 
+  /// Pre-computed package prefix for faster matching.
+  late final String? _packagePrefix;
+
+  /// Cache for normalized pattern paths.
+  final _normalizedPatternCache = <String, String>{};
+
   PatternMatcher({
     required this.configDir,
     required this.packageRoot,
     this.packageName,
-  });
+  }) {
+    _packagePrefix = packageName != null ? 'package:$packageName/' : null;
+  }
 
   /// Check if an import matches a pattern.
   bool matches({
@@ -58,37 +66,41 @@ class PatternMatcher {
     String pattern,
     String filePath,
   ) {
-    // Convert relative pattern to absolute path from config directory
-    final absolutePatternPath = p.normalize(p.join(configDir, pattern));
-
-    // Convert import URI to absolute path
-    String? absoluteImportPath;
-
-    if (importUri.startsWith('package:')) {
-      // Convert package: import to file path
-      absoluteImportPath = _packageImportToPath(importUri);
-    } else if (importUri.startsWith('./') || importUri.startsWith('../')) {
-      // Relative import from file location
-      absoluteImportPath = p.normalize(p.join(p.dirname(filePath), importUri));
-    } else if (!importUri.contains(':')) {
-      // Simple relative import
-      absoluteImportPath = p.normalize(p.join(p.dirname(filePath), importUri));
+    // Get cached normalized pattern path, or compute and cache it
+    var absolutePatternPath = _normalizedPatternCache[pattern];
+    if (absolutePatternPath == null) {
+      absolutePatternPath = p.normalize(p.join(configDir, pattern));
+      _normalizedPatternCache[pattern] = absolutePatternPath;
     }
 
+    // Convert import URI to absolute path
+    final absoluteImportPath = _resolveImportPath(importUri, filePath);
     if (absoluteImportPath == null) return false;
 
     return pathMatchesPattern(absoluteImportPath, absolutePatternPath);
   }
 
+  /// Resolve import URI to absolute file path.
+  String? _resolveImportPath(String importUri, String filePath) {
+    if (importUri.startsWith('package:')) {
+      return _packageImportToPath(importUri);
+    }
+
+    if (importUri.startsWith('./') ||
+        importUri.startsWith('../') ||
+        !importUri.contains(':')) {
+      return p.normalize(p.join(p.dirname(filePath), importUri));
+    }
+
+    return null;
+  }
+
   /// Convert package: import to absolute file path.
   String? _packageImportToPath(String importUri) {
-    if (packageName == null) return null;
+    final prefix = _packagePrefix;
+    if (prefix == null || !importUri.startsWith(prefix)) return null;
 
-    // package:my_app/foo/bar.dart -> /path/to/package/lib/foo/bar.dart
-    final packagePrefix = 'package:$packageName/';
-    if (!importUri.startsWith(packagePrefix)) return null;
-
-    final relativePath = importUri.substring(packagePrefix.length);
+    final relativePath = importUri.substring(prefix.length);
     return p.join(packageRoot, 'lib', relativePath);
   }
 

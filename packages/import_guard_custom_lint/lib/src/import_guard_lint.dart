@@ -18,6 +18,10 @@ class ImportGuardLint extends DartLintRule {
   /// Cache for package root lookups to avoid repeated filesystem traversal.
   static final _packageRootCache = <String, String?>{};
 
+  /// Cache for PatternMatcher instances per config directory.
+  /// This avoids creating new PatternMatcher for each import check.
+  static final _matcherCache = <String, PatternMatcher>{};
+
   @override
   void run(
     CustomLintResolver resolver,
@@ -38,11 +42,7 @@ class ImportGuardLint extends DartLintRule {
       if (importUri == null) return;
 
       for (final config in configs) {
-        final matcher = PatternMatcher(
-          configDir: config.configDir,
-          packageRoot: packageRoot,
-          packageName: packageName,
-        );
+        final matcher = _getOrCreateMatcher(config, packageRoot, packageName);
 
         // Check if import is denied
         if (_isDenied(importUri, config, matcher, filePath)) {
@@ -66,6 +66,25 @@ class ImportGuardLint extends DartLintRule {
         }
       }
     });
+  }
+
+  /// Get or create a cached PatternMatcher for the given config.
+  PatternMatcher _getOrCreateMatcher(
+    ImportGuardConfig config,
+    String packageRoot,
+    String? packageName,
+  ) {
+    final cacheKey = '${config.configDir}|$packageRoot';
+    var matcher = _matcherCache[cacheKey];
+    if (matcher == null) {
+      matcher = PatternMatcher(
+        configDir: config.configDir,
+        packageRoot: packageRoot,
+        packageName: packageName,
+      );
+      _matcherCache[cacheKey] = matcher;
+    }
+    return matcher;
   }
 
   /// Returns true if the import matches any deny pattern.

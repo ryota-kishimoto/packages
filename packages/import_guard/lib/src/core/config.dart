@@ -128,27 +128,40 @@ class ConfigCache {
   /// Map: packageRoot -> packageName
   final _packageNames = <String, String?>{};
 
+  /// Cache: directory path -> list of applicable configs
+  /// This avoids repeated traversal for files in the same directory.
+  final _configsForDirCache = <String, List<ImportGuardConfig>>{};
+
   /// Get all applicable configs for a file path.
   /// Returns configs from file's directory up to repo root.
   /// Stops traversing if a config has `inherit: false`.
   List<ImportGuardConfig> getConfigsForFile(String filePath, String packageRoot) {
+    final dir = p.dirname(filePath);
+
+    // Check directory cache first
+    final cached = _configsForDirCache[dir];
+    if (cached != null) return cached;
+
     final repoRoot = _getRepoRoot(packageRoot);
     _ensureRepoLoaded(repoRoot);
 
     final configs = <ImportGuardConfig>[];
     final allConfigs = _configsByRepo[repoRoot] ?? {};
 
-    var dir = p.dirname(filePath);
+    var currentDir = dir;
     while (true) {
-      final config = allConfigs[dir];
+      final config = allConfigs[currentDir];
       if (config != null) {
         configs.add(config);
         // Stop inheriting if this config has inherit: false
         if (!config.inherit) break;
       }
-      if (dir == repoRoot || dir == p.dirname(dir)) break;
-      dir = p.dirname(dir);
+      if (currentDir == repoRoot || currentDir == p.dirname(currentDir)) break;
+      currentDir = p.dirname(currentDir);
     }
+
+    // Cache the result for this directory
+    _configsForDirCache[dir] = configs;
 
     return configs;
   }
