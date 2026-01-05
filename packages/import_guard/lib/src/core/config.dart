@@ -224,16 +224,16 @@ class ConfigCache {
     _scanDirectory(Directory(_repoRoot!), _allConfigs!);
   }
 
-  /// Find repo root by looking for .git directory.
+  /// Find package root by looking for pubspec.yaml (used as root for config scanning).
   String _findRepoRoot(String startDir) {
     var dir = Directory(startDir);
     while (dir.path != dir.parent.path) {
-      if (Directory(p.join(dir.path, '.git')).existsSync()) {
+      if (File(p.join(dir.path, 'pubspec.yaml')).existsSync()) {
         return dir.path;
       }
       dir = dir.parent;
     }
-    return startDir; // Fallback if no .git found
+    return startDir; // Fallback if no pubspec.yaml found
   }
 
   /// Find package root by looking for pubspec.yaml.
@@ -250,11 +250,15 @@ class ConfigCache {
     return null;
   }
 
-  /// Recursively scan directory for import_guard.yaml files.
+  /// Recursively scan directory for import_guard.yaml/.yml files.
   void _scanDirectory(Directory dir, Map<String, ImportGuardConfig> configs) {
     if (!dir.existsSync()) return;
 
-    final configFile = File(p.join(dir.path, 'import_guard.yaml'));
+    // Try .yaml first, then .yml
+    var configFile = File(p.join(dir.path, 'import_guard.yaml'));
+    if (!configFile.existsSync()) {
+      configFile = File(p.join(dir.path, 'import_guard.yml'));
+    }
     if (configFile.existsSync()) {
       try {
         final content = configFile.readAsStringSync();

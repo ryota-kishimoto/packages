@@ -1,9 +1,26 @@
 // ignore_for_file: deprecated_member_use
 
+import 'package:analyzer/dart/ast/ast.dart' show AstNode;
 import 'package:analyzer/error/error.dart' show ErrorSeverity;
 import 'package:analyzer/error/listener.dart' show ErrorReporter;
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 import 'core/core.dart';
+
+/// Extension to report errors compatible with both analyzer 6.x and 8.x.
+extension ErrorReporterCompat on ErrorReporter {
+  /// Reports an error at the given node, using the appropriate API
+  /// for the analyzer version.
+  void reportLintForNode(LintCode code, AstNode node, List<Object> arguments) {
+    // Try analyzer 8.x API first (atNode), fall back to 6.x (reportErrorForNode)
+    try {
+      // ignore: avoid_dynamic_calls
+      (this as dynamic).atNode(node, code, arguments: arguments);
+    } on NoSuchMethodError {
+      // ignore: avoid_dynamic_calls
+      (this as dynamic).reportErrorForNode(code, node, arguments);
+    }
+  }
+}
 
 class ImportGuardLint extends DartLintRule {
   ImportGuardLint() : super(code: _code);
@@ -43,10 +60,10 @@ class ImportGuardLint extends DartLintRule {
 
         // Check if import is denied
         if (_isDenied(importUri, config, matcher, filePath)) {
-          reporter.atNode(
-            node,
+          reporter.reportLintForNode(
             _code,
-            arguments: [importUri, config.configFilePath],
+            node,
+            [importUri, config.configFilePath],
           );
           return;
         }
@@ -54,10 +71,10 @@ class ImportGuardLint extends DartLintRule {
         // Check if import is not allowed (when allow list is specified)
         if (config.hasAllowRules &&
             !_isAllowed(importUri, config, matcher, filePath)) {
-          reporter.atNode(
-            node,
+          reporter.reportLintForNode(
             _code,
-            arguments: [importUri, config.configFilePath],
+            node,
+            [importUri, config.configFilePath],
           );
           return;
         }

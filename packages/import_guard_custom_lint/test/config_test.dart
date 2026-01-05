@@ -228,8 +228,8 @@ allow:
       tempDir = Directory.systemTemp.createTempSync('import_guard_test_');
       repoRoot = tempDir.path;
 
-      // Create .git directory to mark repo root
-      Directory(p.join(repoRoot, '.git')).createSync();
+      // Create pubspec.yaml to mark package root (used as root for config scanning)
+      File(p.join(repoRoot, 'pubspec.yaml')).writeAsStringSync('name: test\n');
     });
 
     tearDown(() {
@@ -263,7 +263,7 @@ deny:
     });
 
     test('getPackageName returns cached result', () {
-      // Create pubspec.yaml
+      // Update pubspec.yaml with package name
       File(p.join(repoRoot, 'pubspec.yaml')).writeAsStringSync('''
 name: test_package
 ''');
@@ -283,10 +283,7 @@ name: test_package
     });
 
     test('getPackageRoot returns cached result', () {
-      // Create pubspec.yaml
-      File(p.join(repoRoot, 'pubspec.yaml')).writeAsStringSync('''
-name: test_package
-''');
+      // pubspec.yaml already exists from setUp
 
       final libDir = Directory(p.join(repoRoot, 'lib'));
       libDir.createSync();
