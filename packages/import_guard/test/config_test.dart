@@ -13,7 +13,11 @@ deny:
   - dart:mirrors
 ''') as YamlMap;
 
-      final config = ImportGuardConfig.fromYaml(yaml, '/app/lib/domain');
+      final config = ImportGuardConfig.fromYaml(
+        yaml,
+        '/app/lib/domain',
+        '/app/lib/domain/import_guard.yaml',
+      );
 
       expect(config.deny, [
         'package:my_app/data/**',
@@ -21,6 +25,7 @@ deny:
         'dart:mirrors',
       ]);
       expect(config.configDir, '/app/lib/domain');
+      expect(config.configFilePath, '/app/lib/domain/import_guard.yaml');
     });
 
     test('handles empty deny list', () {
@@ -28,7 +33,11 @@ deny:
 deny: []
 ''') as YamlMap;
 
-      final config = ImportGuardConfig.fromYaml(yaml, '/app');
+      final config = ImportGuardConfig.fromYaml(
+        yaml,
+        '/app',
+        '/app/import_guard.yaml',
+      );
 
       expect(config.deny, isEmpty);
     });
@@ -38,7 +47,11 @@ deny: []
 other_key: value
 ''') as YamlMap;
 
-      final config = ImportGuardConfig.fromYaml(yaml, '/app');
+      final config = ImportGuardConfig.fromYaml(
+        yaml,
+        '/app',
+        '/app/import_guard.yaml',
+      );
 
       expect(config.deny, isEmpty);
     });
@@ -50,12 +63,31 @@ deny:
   - ./internal/*
 ''') as YamlMap;
 
-      final config = ImportGuardConfig.fromYaml(yaml, '/app/lib/domain');
+      final config = ImportGuardConfig.fromYaml(
+        yaml,
+        '/app/lib/domain',
+        '/app/lib/domain/import_guard.yaml',
+      );
 
       expect(config.deny, [
         '../presentation/**',
         './internal/*',
       ]);
+    });
+
+    test('stores configFilePath correctly', () {
+      final yaml = loadYaml('''
+deny:
+  - dart:mirrors
+''') as YamlMap;
+
+      final config = ImportGuardConfig.fromYaml(
+        yaml,
+        '/project/lib/domain',
+        '/project/lib/domain/import_guard.yaml',
+      );
+
+      expect(config.configFilePath, '/project/lib/domain/import_guard.yaml');
     });
   });
 }

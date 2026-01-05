@@ -10,6 +10,9 @@ class ImportGuardConfig {
   final List<String> deny;
   final String configDir;
 
+  /// Path to the import_guard.yaml file that defined this config.
+  final String configFilePath;
+
   /// Pre-built Trie for absolute patterns (package:, dart:)
   final PatternTrie absolutePatternTrie;
 
@@ -19,11 +22,16 @@ class ImportGuardConfig {
   ImportGuardConfig._({
     required this.deny,
     required this.configDir,
+    required this.configFilePath,
     required this.absolutePatternTrie,
     required this.relativePatterns,
   });
 
-  factory ImportGuardConfig.fromYaml(YamlMap yaml, String configDir) {
+  factory ImportGuardConfig.fromYaml(
+    YamlMap yaml,
+    String configDir,
+    String configFilePath,
+  ) {
     final denyList = yaml['deny'] as YamlList?;
     final patterns = denyList?.map((e) => e.toString()).toList() ?? [];
 
@@ -48,6 +56,7 @@ class ImportGuardConfig {
     return ImportGuardConfig._(
       deny: patterns,
       configDir: configDir,
+      configFilePath: configFilePath,
       absolutePatternTrie: trie,
       relativePatterns: relativePatterns,
     );
@@ -153,7 +162,8 @@ class ConfigCache {
         final content = configFile.readAsStringSync();
         final yaml = loadYaml(content) as YamlMap?;
         if (yaml != null) {
-          configs[dir.path] = ImportGuardConfig.fromYaml(yaml, dir.path);
+          configs[dir.path] =
+              ImportGuardConfig.fromYaml(yaml, dir.path, configFile.path);
         }
       } catch (_) {
         // Ignore invalid yaml files

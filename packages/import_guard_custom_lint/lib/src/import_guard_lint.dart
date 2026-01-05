@@ -10,7 +10,7 @@ class ImportGuardLint extends DartLintRule {
 
   static const _code = LintCode(
     name: 'import_guard',
-    problemMessage: 'This import is not allowed: {0}',
+    problemMessage: "Import of '{0}' is not allowed by '{1}'.",
     errorSeverity: ErrorSeverity.WARNING,
   );
   final _configCache = ConfigCache();
@@ -43,7 +43,7 @@ class ImportGuardLint extends DartLintRule {
           reporter.atNode(
             node,
             _code,
-            arguments: [importUri],
+            arguments: [importUri, config.configFilePath],
           );
           return;
         }
@@ -65,7 +65,7 @@ class ImportGuardLint extends DartLintRule {
               reporter.atNode(
                 node,
                 _code,
-                arguments: [importUri],
+                arguments: [importUri, config.configFilePath],
               );
               return;
             }

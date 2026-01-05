@@ -10,7 +10,7 @@ import 'core/core.dart';
 class ImportGuardRule extends AnalysisRule {
   static const LintCode code = LintCode(
     'import_guard',
-    'This import is not allowed: {0}',
+    "Import of '{0}' is not allowed by '{1}'.",
   );
 
   ImportGuardRule()
@@ -62,7 +62,7 @@ class _ImportGuardVisitor extends SimpleAstVisitor<void> {
     for (final config in configs) {
       // Fast path: check absolute patterns using Trie O(path_length)
       if (config.absolutePatternTrie.matches(importUri)) {
-        rule.reportAtNode(node, arguments: [importUri]);
+        rule.reportAtNode(node, arguments: [importUri, config.configFilePath]);
         return;
       }
 
@@ -80,7 +80,7 @@ class _ImportGuardVisitor extends SimpleAstVisitor<void> {
             pattern: pattern,
             filePath: filePath,
           )) {
-            rule.reportAtNode(node, arguments: [importUri]);
+            rule.reportAtNode(node, arguments: [importUri, config.configFilePath]);
             return;
           }
         }
