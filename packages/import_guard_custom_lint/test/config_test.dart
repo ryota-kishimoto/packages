@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:yaml/yaml.dart';
 
@@ -211,6 +214,172 @@ allow:
       expect(config.allowPatternTrie.matches('package:my_app/domain/user.dart'),
           isTrue);
       expect(config.allowRelativePatterns, ['../utils/**', './models/*']);
+    });
+  });
+
+  group('ConfigCache', () {
+    late Directory tempDir;
+    late String repoRoot;
+
+    setUp(() {
+      // Reset singleton state before each test
+      ConfigCache().reset();
+
+      tempDir = Directory.systemTemp.createTempSync('import_guard_test_');
+      repoRoot = tempDir.path;
+
+      // Create .git directory to mark repo root
+      Directory(p.join(repoRoot, '.git')).createSync();
+    });
+
+    tearDown(() {
+      tempDir.deleteSync(recursive: true);
+    });
+
+    test('getConfigsForFile returns cached result for same directory', () {
+      // Create a config file
+      final libDir = Directory(p.join(repoRoot, 'lib'));
+      libDir.createSync();
+      File(p.join(libDir.path, 'import_guard.yaml')).writeAsStringSync('''
+deny:
+  - dart:mirrors
+''');
+
+      // Create test files
+      File(p.join(libDir.path, 'a.dart')).writeAsStringSync('');
+      File(p.join(libDir.path, 'b.dart')).writeAsStringSync('');
+
+      final cache = ConfigCache();
+
+      // First call should load and cache
+      final configsA = cache.getConfigsForFile(p.join(libDir.path, 'a.dart'));
+      expect(configsA, hasLength(1));
+      expect(configsA.first.deny, contains('dart:mirrors'));
+
+      // Second call for same directory should return same cached list
+      final configsB = cache.getConfigsForFile(p.join(libDir.path, 'b.dart'));
+      expect(identical(configsA, configsB), isTrue,
+          reason: 'Should return same cached List instance');
+    });
+
+    test('getPackageName returns cached result', () {
+      // Create pubspec.yaml
+      File(p.join(repoRoot, 'pubspec.yaml')).writeAsStringSync('''
+name: test_package
+''');
+
+      final libDir = Directory(p.join(repoRoot, 'lib'));
+      libDir.createSync();
+
+      final cache = ConfigCache();
+
+      // First call
+      final name1 = cache.getPackageName(libDir.path);
+      expect(name1, 'test_package');
+
+      // Second call should return cached
+      final name2 = cache.getPackageName(libDir.path);
+      expect(name2, 'test_package');
+    });
+
+    test('getPackageRoot returns cached result', () {
+      // Create pubspec.yaml
+      File(p.join(repoRoot, 'pubspec.yaml')).writeAsStringSync('''
+name: test_package
+''');
+
+      final libDir = Directory(p.join(repoRoot, 'lib'));
+      libDir.createSync();
+      final srcDir = Directory(p.join(libDir.path, 'src'));
+      srcDir.createSync();
+
+      final cache = ConfigCache();
+
+      // Call for nested directory
+      final root1 = cache.getPackageRoot(srcDir.path);
+      expect(root1, repoRoot);
+
+      // Call again should return cached
+      final root2 = cache.getPackageRoot(srcDir.path);
+      expect(root2, repoRoot);
+    });
+
+    test('scans all import_guard.yaml files once', () {
+      // Create nested structure with multiple configs
+      final libDir = Directory(p.join(repoRoot, 'lib'));
+      libDir.createSync();
+      final domainDir = Directory(p.join(libDir.path, 'domain'));
+      domainDir.createSync();
+      final dataDir = Directory(p.join(libDir.path, 'data'));
+      dataDir.createSync();
+
+      // Root config
+      File(p.join(libDir.path, 'import_guard.yaml')).writeAsStringSync('''
+deny:
+  - dart:mirrors
+''');
+
+      // Domain config
+      File(p.join(domainDir.path, 'import_guard.yaml')).writeAsStringSync('''
+deny:
+  - package:http/**
+''');
+
+      // Data config
+      File(p.join(dataDir.path, 'import_guard.yaml')).writeAsStringSync('''
+deny:
+  - dart:io
+''');
+
+      File(p.join(domainDir.path, 'user.dart')).writeAsStringSync('');
+      File(p.join(dataDir.path, 'repo.dart')).writeAsStringSync('');
+
+      final cache = ConfigCache();
+
+      // Get configs for domain file - should see domain + lib configs
+      final domainConfigs =
+          cache.getConfigsForFile(p.join(domainDir.path, 'user.dart'));
+      expect(domainConfigs, hasLength(2));
+      expect(domainConfigs[0].deny, contains('package:http/**'));
+      expect(domainConfigs[1].deny, contains('dart:mirrors'));
+
+      // Get configs for data file - should see data + lib configs
+      final dataConfigs =
+          cache.getConfigsForFile(p.join(dataDir.path, 'repo.dart'));
+      expect(dataConfigs, hasLength(2));
+      expect(dataConfigs[0].deny, contains('dart:io'));
+      expect(dataConfigs[1].deny, contains('dart:mirrors'));
+    });
+
+    test('inherit: false stops config inheritance', () {
+      final libDir = Directory(p.join(repoRoot, 'lib'));
+      libDir.createSync();
+      final legacyDir = Directory(p.join(libDir.path, 'legacy'));
+      legacyDir.createSync();
+
+      // Root config
+      File(p.join(libDir.path, 'import_guard.yaml')).writeAsStringSync('''
+deny:
+  - dart:mirrors
+''');
+
+      // Legacy config with inherit: false
+      File(p.join(legacyDir.path, 'import_guard.yaml')).writeAsStringSync('''
+inherit: false
+deny:
+  - dart:io
+''');
+
+      File(p.join(legacyDir.path, 'old.dart')).writeAsStringSync('');
+
+      final cache = ConfigCache();
+
+      // Should only see legacy config, not lib config
+      final configs =
+          cache.getConfigsForFile(p.join(legacyDir.path, 'old.dart'));
+      expect(configs, hasLength(1));
+      expect(configs[0].deny, contains('dart:io'));
+      expect(configs[0].inherit, isFalse);
     });
   });
 }

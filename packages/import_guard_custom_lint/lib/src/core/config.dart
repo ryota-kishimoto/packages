@@ -162,6 +162,15 @@ class ConfigCache {
     return configs;
   }
 
+  /// Reset all caches. Only for testing.
+  void reset() {
+    _repoRoot = null;
+    _allConfigs = null;
+    _configsForDirCache.clear();
+    _packageNameCache.clear();
+    _packageRootCache.clear();
+  }
+
   /// Cache: directory path -> package root.
   final _packageRootCache = <String, String?>{};
 
