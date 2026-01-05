@@ -1,6 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
-import 'package:analyzer/dart/ast/ast.dart' show AstNode;
+import 'package:analyzer/dart/ast/ast.dart' show AstNode, ImportDirective;
 import 'package:analyzer/error/error.dart' show ErrorSeverity;
 import 'package:analyzer/error/listener.dart' show ErrorReporter;
 import 'package:custom_lint_builder/custom_lint_builder.dart';
@@ -36,6 +36,9 @@ class ImportGuardLint extends DartLintRule {
   /// Cache for PatternMatcher instances per config directory.
   static final _matcherCache = <String, PatternMatcher>{};
 
+  /// Cache to prevent duplicate reports (file:offset:importUri -> reported).
+  static final _reportedCache = <String, bool>{};
+
   @override
   void run(
     CustomLintResolver resolver,
@@ -60,26 +63,32 @@ class ImportGuardLint extends DartLintRule {
 
         // Check if import is denied
         if (_isDenied(importUri, config, matcher, filePath)) {
-          reporter.reportLintForNode(
-            _code,
-            node,
-            [importUri, config.configFilePath],
-          );
+          _reportOnce(reporter, node, filePath, importUri, config.configFilePath);
           return;
         }
 
         // Check if import is not allowed (when allow list is specified)
         if (config.hasAllowRules &&
             !_isAllowed(importUri, config, matcher, filePath)) {
-          reporter.reportLintForNode(
-            _code,
-            node,
-            [importUri, config.configFilePath],
-          );
+          _reportOnce(reporter, node, filePath, importUri, config.configFilePath);
           return;
         }
       }
     });
+  }
+
+  /// Report only once per file:offset:importUri to prevent duplicates.
+  void _reportOnce(
+    ErrorReporter reporter,
+    ImportDirective node,
+    String filePath,
+    String importUri,
+    String configFilePath,
+  ) {
+    final key = '$filePath:${node.offset}:$importUri';
+    if (_reportedCache.containsKey(key)) return;
+    _reportedCache[key] = true;
+    reporter.reportLintForNode(_code, node, [importUri, configFilePath]);
   }
 
   /// Get or create a cached PatternMatcher for the given config.

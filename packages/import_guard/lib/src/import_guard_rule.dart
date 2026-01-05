@@ -42,6 +42,9 @@ class _ImportGuardVisitor extends SimpleAstVisitor<void> {
   /// Cache for PatternMatcher instances per config directory.
   static final _matcherCache = <String, PatternMatcher>{};
 
+  /// Cache to prevent duplicate reports (file:line -> reported).
+  static final _reportedCache = <String, bool>{};
+
   @override
   void visitImportDirective(ImportDirective node) {
     final importUri = node.uri.stringValue;
@@ -64,17 +67,30 @@ class _ImportGuardVisitor extends SimpleAstVisitor<void> {
 
       // Check if import is denied
       if (_isDenied(importUri, config, matcher, filePath)) {
-        rule.reportAtNode(node, arguments: [importUri, config.configFilePath]);
+        _reportOnce(node, filePath, importUri, config.configFilePath);
         return;
       }
 
       // Check if import is not allowed (when allow list is specified)
       if (config.hasAllowRules &&
           !_isAllowed(importUri, config, matcher, filePath)) {
-        rule.reportAtNode(node, arguments: [importUri, config.configFilePath]);
+        _reportOnce(node, filePath, importUri, config.configFilePath);
         return;
       }
     }
+  }
+
+  /// Report only once per file:line:importUri to prevent duplicates.
+  void _reportOnce(
+    ImportDirective node,
+    String filePath,
+    String importUri,
+    String configFilePath,
+  ) {
+    final key = '$filePath:${node.offset}:$importUri';
+    if (_reportedCache.containsKey(key)) return;
+    _reportedCache[key] = true;
+    rule.reportAtNode(node, arguments: [importUri, configFilePath]);
   }
 
   /// Get or create a cached PatternMatcher for the given config.
