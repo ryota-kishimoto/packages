@@ -8,6 +8,7 @@ import 'pattern_trie.dart';
 /// Configuration for import_guard loaded from import_guard.yaml
 class ImportGuardConfig {
   final List<String> deny;
+  final List<String> allow;
   final String configDir;
 
   /// Path to the import_guard.yaml file that defined this config.
@@ -16,20 +17,36 @@ class ImportGuardConfig {
   /// Whether to inherit parent directory configs. Defaults to true.
   final bool inherit;
 
-  /// Pre-built Trie for absolute patterns (package:, dart:)
-  final PatternTrie absolutePatternTrie;
+  /// Pre-built Trie for absolute deny patterns (package:, dart:)
+  final PatternTrie denyPatternTrie;
 
-  /// Relative patterns that need context-aware matching
-  final List<String> relativePatterns;
+  /// Relative deny patterns that need context-aware matching
+  final List<String> denyRelativePatterns;
+
+  /// Pre-built Trie for absolute allow patterns (package:, dart:)
+  final PatternTrie allowPatternTrie;
+
+  /// Relative allow patterns that need context-aware matching
+  final List<String> allowRelativePatterns;
+
+  /// Whether this config has allow rules (used for optimization)
+  bool get hasAllowRules => allow.isNotEmpty;
 
   ImportGuardConfig._({
     required this.deny,
+    required this.allow,
     required this.configDir,
     required this.configFilePath,
     required this.inherit,
-    required this.absolutePatternTrie,
-    required this.relativePatterns,
+    required this.denyPatternTrie,
+    required this.denyRelativePatterns,
+    required this.allowPatternTrie,
+    required this.allowRelativePatterns,
   });
+
+  // Legacy getters for backward compatibility
+  PatternTrie get absolutePatternTrie => denyPatternTrie;
+  List<String> get relativePatterns => denyRelativePatterns;
 
   factory ImportGuardConfig.fromYaml(
     YamlMap yaml,
@@ -37,34 +54,59 @@ class ImportGuardConfig {
     String configFilePath,
   ) {
     final denyList = yaml['deny'] as YamlList?;
-    final patterns = denyList?.map((e) => e.toString()).toList() ?? [];
+    final denyPatterns = denyList?.map((e) => e.toString()).toList() ?? [];
+
+    final allowList = yaml['allow'] as YamlList?;
+    final allowPatterns = allowList?.map((e) => e.toString()).toList() ?? [];
+
     final inherit = yaml['inherit'] as bool? ?? true;
 
-    // Separate absolute and relative patterns
-    final absolutePatterns = <String>[];
-    final relativePatterns = <String>[];
+    // Separate absolute and relative deny patterns
+    final denyAbsolutePatterns = <String>[];
+    final denyRelativePatterns = <String>[];
 
-    for (final pattern in patterns) {
+    for (final pattern in denyPatterns) {
       if (pattern.startsWith('./') || pattern.startsWith('../')) {
-        relativePatterns.add(pattern);
+        denyRelativePatterns.add(pattern);
       } else {
-        absolutePatterns.add(pattern);
+        denyAbsolutePatterns.add(pattern);
       }
     }
 
-    // Build Trie from absolute patterns
-    final trie = PatternTrie();
-    for (final pattern in absolutePatterns) {
-      trie.insert(pattern);
+    // Separate absolute and relative allow patterns
+    final allowAbsolutePatterns = <String>[];
+    final allowRelativePatterns = <String>[];
+
+    for (final pattern in allowPatterns) {
+      if (pattern.startsWith('./') || pattern.startsWith('../')) {
+        allowRelativePatterns.add(pattern);
+      } else {
+        allowAbsolutePatterns.add(pattern);
+      }
+    }
+
+    // Build Trie from absolute deny patterns
+    final denyTrie = PatternTrie();
+    for (final pattern in denyAbsolutePatterns) {
+      denyTrie.insert(pattern);
+    }
+
+    // Build Trie from absolute allow patterns
+    final allowTrie = PatternTrie();
+    for (final pattern in allowAbsolutePatterns) {
+      allowTrie.insert(pattern);
     }
 
     return ImportGuardConfig._(
-      deny: patterns,
+      deny: denyPatterns,
+      allow: allowPatterns,
       configDir: configDir,
       configFilePath: configFilePath,
       inherit: inherit,
-      absolutePatternTrie: trie,
-      relativePatterns: relativePatterns,
+      denyPatternTrie: denyTrie,
+      denyRelativePatterns: denyRelativePatterns,
+      allowPatternTrie: allowTrie,
+      allowRelativePatterns: allowRelativePatterns,
     );
   }
 }

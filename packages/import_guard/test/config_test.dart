@@ -136,5 +136,81 @@ deny:
 
       expect(config.inherit, isTrue);
     });
+
+    test('parses allow list from yaml', () {
+      final yaml = loadYaml('''
+allow:
+  - package:my_app/domain/**
+  - dart:core
+  - dart:async
+''') as YamlMap;
+
+      final config = ImportGuardConfig.fromYaml(
+        yaml,
+        '/app/lib/domain',
+        '/app/lib/domain/import_guard.yaml',
+      );
+
+      expect(config.allow, [
+        'package:my_app/domain/**',
+        'dart:core',
+        'dart:async',
+      ]);
+      expect(config.hasAllowRules, isTrue);
+    });
+
+    test('allow defaults to empty list', () {
+      final yaml = loadYaml('''
+deny:
+  - dart:mirrors
+''') as YamlMap;
+
+      final config = ImportGuardConfig.fromYaml(
+        yaml,
+        '/app/lib/domain',
+        '/app/lib/domain/import_guard.yaml',
+      );
+
+      expect(config.allow, isEmpty);
+      expect(config.hasAllowRules, isFalse);
+    });
+
+    test('parses allow and deny together', () {
+      final yaml = loadYaml('''
+allow:
+  - package:my_app/**
+deny:
+  - package:my_app/data/**
+''') as YamlMap;
+
+      final config = ImportGuardConfig.fromYaml(
+        yaml,
+        '/app/lib/domain',
+        '/app/lib/domain/import_guard.yaml',
+      );
+
+      expect(config.allow, ['package:my_app/**']);
+      expect(config.deny, ['package:my_app/data/**']);
+      expect(config.hasAllowRules, isTrue);
+    });
+
+    test('separates allow patterns into absolute and relative', () {
+      final yaml = loadYaml('''
+allow:
+  - package:my_app/domain/**
+  - ../utils/**
+  - ./models/*
+''') as YamlMap;
+
+      final config = ImportGuardConfig.fromYaml(
+        yaml,
+        '/app/lib/domain',
+        '/app/lib/domain/import_guard.yaml',
+      );
+
+      expect(config.allowPatternTrie.matches('package:my_app/domain/user.dart'),
+          isTrue);
+      expect(config.allowRelativePatterns, ['../utils/**', './models/*']);
+    });
   });
 }

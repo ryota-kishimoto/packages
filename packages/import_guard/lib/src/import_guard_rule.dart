@@ -60,32 +60,77 @@ class _ImportGuardVisitor extends SimpleAstVisitor<void> {
     final packageName = _configCache.getPackageName(packageRoot);
 
     for (final config in configs) {
-      // Fast path: check absolute patterns using Trie O(path_length)
-      if (config.absolutePatternTrie.matches(importUri)) {
+      final matcher = PatternMatcher(
+        configDir: config.configDir,
+        packageRoot: packageRoot,
+        packageName: packageName,
+      );
+
+      // Check if import is denied
+      if (_isDenied(importUri, config, matcher, filePath)) {
         rule.reportAtNode(node, arguments: [importUri, config.configFilePath]);
         return;
       }
 
-      // Slow path: check relative patterns O(patterns)
-      if (config.relativePatterns.isNotEmpty) {
-        final matcher = PatternMatcher(
-          configDir: config.configDir,
-          packageRoot: packageRoot,
-          packageName: packageName,
-        );
-
-        for (final pattern in config.relativePatterns) {
-          if (matcher.matches(
-            importUri: importUri,
-            pattern: pattern,
-            filePath: filePath,
-          )) {
-            rule.reportAtNode(node, arguments: [importUri, config.configFilePath]);
-            return;
-          }
-        }
+      // Check if import is not allowed (when allow list is specified)
+      if (config.hasAllowRules &&
+          !_isAllowed(importUri, config, matcher, filePath)) {
+        rule.reportAtNode(node, arguments: [importUri, config.configFilePath]);
+        return;
       }
     }
+  }
+
+  /// Returns true if the import matches any deny pattern.
+  bool _isDenied(
+    String importUri,
+    ImportGuardConfig config,
+    PatternMatcher matcher,
+    String filePath,
+  ) {
+    // Fast path: check absolute patterns using Trie
+    if (config.denyPatternTrie.matches(importUri)) {
+      return true;
+    }
+
+    // Slow path: check relative patterns
+    for (final pattern in config.denyRelativePatterns) {
+      if (matcher.matches(
+        importUri: importUri,
+        pattern: pattern,
+        filePath: filePath,
+      )) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /// Returns true if the import matches any allow pattern.
+  bool _isAllowed(
+    String importUri,
+    ImportGuardConfig config,
+    PatternMatcher matcher,
+    String filePath,
+  ) {
+    // Fast path: check absolute patterns using Trie
+    if (config.allowPatternTrie.matches(importUri)) {
+      return true;
+    }
+
+    // Slow path: check relative patterns
+    for (final pattern in config.allowRelativePatterns) {
+      if (matcher.matches(
+        importUri: importUri,
+        pattern: pattern,
+        filePath: filePath,
+      )) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   String? _findPackageRoot(String filePath) {
