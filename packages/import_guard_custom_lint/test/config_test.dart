@@ -381,5 +381,128 @@ deny:
       expect(configs[0].deny, contains('dart:io'));
       expect(configs[0].inherit, isFalse);
     });
+
+    test('10000 getConfigsForFile calls complete within 100ms', () {
+      // Create complex folder structure
+      final lib = Directory(p.join(repoRoot, 'lib'))..createSync();
+
+      // Domain layer
+      final domain = Directory(p.join(lib.path, 'domain'))..createSync();
+      final entities = Directory(p.join(domain.path, 'entities'))..createSync();
+      final usecases = Directory(p.join(domain.path, 'usecases'))..createSync();
+      final repositories = Directory(p.join(domain.path, 'repositories'))
+        ..createSync();
+
+      // Data layer
+      final data = Directory(p.join(lib.path, 'data'))..createSync();
+      final sources = Directory(p.join(data.path, 'sources'))..createSync();
+      final local = Directory(p.join(sources.path, 'local'))..createSync();
+      final remote = Directory(p.join(sources.path, 'remote'))..createSync();
+      final models = Directory(p.join(data.path, 'models'))..createSync();
+
+      // Presentation layer
+      final presentation = Directory(p.join(lib.path, 'presentation'))
+        ..createSync();
+      final pages = Directory(p.join(presentation.path, 'pages'))..createSync();
+      final home = Directory(p.join(pages.path, 'home'))..createSync();
+      final settings = Directory(p.join(pages.path, 'settings'))..createSync();
+      final profile = Directory(p.join(pages.path, 'profile'))..createSync();
+      final widgets = Directory(p.join(presentation.path, 'widgets'))
+        ..createSync();
+      final common = Directory(p.join(widgets.path, 'common'))..createSync();
+      final specific = Directory(p.join(widgets.path, 'specific'))..createSync();
+
+      // Create import_guard.yaml files at various levels
+      File(p.join(lib.path, 'import_guard.yaml')).writeAsStringSync('''
+deny:
+  - dart:mirrors
+  - dart:developer
+''');
+
+      File(p.join(domain.path, 'import_guard.yaml')).writeAsStringSync('''
+deny:
+  - package:http/**
+  - package:dio/**
+''');
+
+      File(p.join(entities.path, 'import_guard.yaml')).writeAsStringSync('''
+deny:
+  - dart:io
+''');
+
+      File(p.join(data.path, 'import_guard.yaml')).writeAsStringSync('''
+allow:
+  - package:myapp/data/**
+  - package:myapp/domain/**
+''');
+
+      File(p.join(remote.path, 'import_guard.yaml')).writeAsStringSync('''
+allow:
+  - package:http/**
+  - package:dio/**
+''');
+
+      File(p.join(presentation.path, 'import_guard.yaml')).writeAsStringSync('''
+deny:
+  - package:myapp/data/**
+''');
+
+      File(p.join(settings.path, 'import_guard.yaml')).writeAsStringSync('''
+inherit: false
+deny:
+  - dart:mirrors
+''');
+
+      // All directories to test
+      final allDirs = [
+        lib,
+        domain,
+        entities,
+        usecases,
+        repositories,
+        data,
+        sources,
+        local,
+        remote,
+        models,
+        presentation,
+        pages,
+        home,
+        settings,
+        profile,
+        widgets,
+        common,
+        specific,
+      ];
+
+      final cache = ConfigCache();
+
+      // Warm up - trigger initial scan
+      cache.getConfigsForFile(p.join(lib.path, 'main.dart'));
+
+      // Now measure 10000 calls across all directories
+      final stopwatch = Stopwatch()..start();
+
+      for (var i = 0; i < 10000; i++) {
+        final dir = allDirs[i % allDirs.length];
+        cache.getConfigsForFile(p.join(dir.path, 'file_$i.dart'));
+      }
+
+      stopwatch.stop();
+
+      // Must complete within 100ms
+      // If caching works properly, 10000 hash lookups should be very fast
+      expect(
+        stopwatch.elapsedMilliseconds,
+        lessThan(100),
+        reason:
+            '10000 getConfigsForFile calls took ${stopwatch.elapsedMilliseconds}ms, expected < 100ms',
+      );
+
+      // Print actual time for visibility
+      // ignore: avoid_print
+      print(
+          'Performance: 10000 calls completed in ${stopwatch.elapsedMilliseconds}ms');
+    });
   });
 }
