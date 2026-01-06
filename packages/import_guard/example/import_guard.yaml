@@ -1,2 +1,6 @@
+# Root-level import_guard.yaml
+# These rules apply to all files in this project.
+
 deny:
+  # Deny dart:mirrors in entire project (security/performance concern)
   - dart:mirrors

@@ -8,4 +8,4 @@ environment:
 dev_dependencies:
   import_guard_custom_lint:
     path: ..
-  custom_lint: ^0.8.0
+  custom_lint: ^0.7.0
