@@ -1,6 +1,6 @@
 name: import_guard
 description: An analyzer plugin to guard imports between folders. Enforce clean architecture layer dependencies with configurable deny rules.
-version: 0.0.5
+version: 0.0.6
 repository: https://github.com/ryota-kishimoto/import_guard/tree/main/packages/import_guard
 issue_tracker: https://github.com/ryota-kishimoto/import_guard/issues
 topics:
