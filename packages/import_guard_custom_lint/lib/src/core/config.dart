@@ -130,6 +130,18 @@ class ConfigCache {
   /// Cache: directory path -> package name.
   final _packageNameCache = <String, String?>{};
 
+  /// Cache: directory path -> package root.
+  final _packageRootCache = <String, String?>{};
+
+  /// Reset all caches. Only for testing.
+  void reset() {
+    _repoRoot = null;
+    _allConfigs = null;
+    _configsForDirCache.clear();
+    _packageNameCache.clear();
+    _packageRootCache.clear();
+  }
+
   /// Get all applicable configs for a file path.
   /// Returns configs from file's directory up to repo root.
   /// Stops traversing if a config has `inherit: false`.
@@ -164,18 +176,6 @@ class ConfigCache {
     return configs;
   }
 
-  /// Reset all caches. Only for testing.
-  void reset() {
-    _repoRoot = null;
-    _allConfigs = null;
-    _configsForDirCache.clear();
-    _packageNameCache.clear();
-    _packageRootCache.clear();
-  }
-
-  /// Cache: directory path -> package root.
-  final _packageRootCache = <String, String?>{};
-
   /// Get package name for directory (cached).
   String? getPackageName(String dir) {
     if (_packageNameCache.containsKey(dir)) {
@@ -209,7 +209,6 @@ class ConfigCache {
     final packageRoot = _findPackageRoot(dir);
     _packageRootCache[dir] = packageRoot;
 
-    // Also cache for the packageRoot itself
     if (packageRoot != null) {
       _packageRootCache[packageRoot] = packageRoot;
     }
@@ -245,7 +244,6 @@ class ConfigCache {
       if (File(p.join(dir.path, 'pubspec.yaml')).existsSync()) {
         return dir.path;
       }
-      // Don't go above repo root
       if (repoRoot != null && dir.path == repoRoot) break;
       dir = dir.parent;
     }
