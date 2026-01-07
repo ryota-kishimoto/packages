@@ -19,7 +19,7 @@ A custom_lint package to guard imports between packages and folders.
 ```yaml
 dev_dependencies:
   import_guard_custom_lint: ^0.0.7
-  custom_lint: ^0.7.0
+  custom_lint: ^0.7.0  # Use 0.7.x for IDE support
 ```
 
 Enable in `analysis_options.yaml`:
