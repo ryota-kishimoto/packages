@@ -15,8 +15,8 @@
 
 ```yaml
 dev_dependencies:
-  import_guard_custom_lint: ^0.0.1
-  custom_lint: ^0.8.0
+  import_guard_custom_lint: ^0.0.7
+  custom_lint: ^0.7.0  # IDE対応には0.7.xを使用
 ```
 
 `analysis_options.yaml`で有効化:

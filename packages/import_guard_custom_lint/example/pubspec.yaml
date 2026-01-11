@@ -3,9 +3,9 @@ description: Example package to test import_guard_custom_lint
 publish_to: none
 
 environment:
-  sdk: ">=3.4.0 <4.0.0"
+  sdk: ">=3.6.0 <4.0.0"
 
 dev_dependencies:
   import_guard_custom_lint:
     path: ..
-  custom_lint: ^0.7.0
+  custom_lint: ^0.7.5
