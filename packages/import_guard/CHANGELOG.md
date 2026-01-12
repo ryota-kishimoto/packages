@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.0.7
+
+- Add developer documentation (CLAUDE.md, version_compatibility.md)
+
+## 0.0.6
+
+- Fix: remove report cache that prevented re-analysis
+- Add multi-level caching for improved performance
+
+## 0.0.5
+
+- Fix: prevent duplicate warning reports
+
 ## 0.0.4
 
 - Fix: lower SDK constraint to ^3.9.0 (was ^3.10.0)
