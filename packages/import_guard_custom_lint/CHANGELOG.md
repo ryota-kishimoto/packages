@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.0
+
+- Stable release
+- Sync test thresholds with import_guard package
+
 ## 0.0.8
 
 - Update SDK constraint from ^3.4.0 to ^3.6.0
